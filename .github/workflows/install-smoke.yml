@@ -1,0 +1,35 @@
+name: Install smoke test
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scoop-install:
+    runs-on: windows-latest
+    steps:
+      - name: Check out the bucket
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+
+      - name: Install Scoop
+        shell: pwsh
+        run: |
+          iex "& {$(irm get.scoop.sh)} -RunAsAdmin"
+          "$HOME\scoop\shims" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
+
+      - name: Install Provenant from this bucket
+        shell: pwsh
+        run: |
+          scoop bucket add provenant "https://github.com/${{ github.repository }}"
+          scoop install provenant
+          provenant --version
+
+      - name: Run a scan
+        shell: pwsh
+        run: provenant scan bucket --license --json-pp - | Out-Null
